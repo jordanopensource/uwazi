@@ -1,0 +1,24 @@
+# dot files
+.git
+.github
+.storybook
+.vscode
+.env
+.dockerignore
+
+# Build files
+node_modules/
+Dockerfile
+*.Dockerfile
+*.yml
+compose.yaml
+
+# Tests
+e2e
+
+# Documentation
+*.md
+LICENSE
+
+# Local mounts
+storage/

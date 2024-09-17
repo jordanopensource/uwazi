@@ -1,12 +1,23 @@
-version: '3'
 services:
+  uwazi:
+    build:
+      context: .
+      # dockerfile: Dockerfile
+      args:
+        - USER=uwazi
+        - NODE_ENV=production
+    image: uwazi:local
+    # command: sleep infinity
+    env_file:
+      - .env
+  
   elasticsearch:
     build:
       context: .
       dockerfile: elastic-icu-7.17.6.Dockerfile
     container_name: uwazi-elasticsearch
     volumes:
-      - esdata01:/usr/share/elasticsearch/data
+      - esdata:/usr/share/elasticsearch/data
     ports:
       - '9200:9200'
     environment:
@@ -15,7 +26,7 @@ services:
       - discovery.type=single-node
       - 'ES_JAVA_OPTS=-Xms2g -Xmx2g'
       - cluster.routing.allocation.disk.threshold_enabled=false
-
+  
   mongo:
     image: "mongo:5.0.27"
     container_name: uwazi-mongo
@@ -52,8 +63,12 @@ services:
       - ./storage/minio:/data
     command: server /data --console-address :9001
 
+  dejavu:
+    image: appbaseio/dejavu:latest   
+    restart: on-failure
+    ports:
+      - "1358:1358"
+
 volumes:
-  esdata01:
-    driver: local
+  esdata:
   mongodata:
-    driver: local
