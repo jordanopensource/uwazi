@@ -3,7 +3,7 @@
 .github
 .storybook
 .vscode
-.env
+#.env
 .dockerignore
 
 # Build files

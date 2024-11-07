@@ -1,8 +1,10 @@
 services:
+  #
+  # Uwazi
+  #
   uwazi:
     build:
       context: .
-      # dockerfile: Dockerfile
       args:
         - USER=uwazi
         - NODE_ENV=production
@@ -10,7 +12,16 @@ services:
     # command: sleep infinity
     env_file:
       - .env
-  
+    ports:
+      - 3000:3000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uwazi.entrypoints=http"
+      - "traefik.http.routers.uwazi.rule=Host(`uwazi.local`)"
+
+  #
+  # Elasticsearch
+  #
   elasticsearch:
     build:
       context: .
@@ -19,52 +30,81 @@ services:
     volumes:
       - esdata:/usr/share/elasticsearch/data
     ports:
-      - '9200:9200'
+      - "9200:9200"
     environment:
       - bootstrap.memory_lock=true
       - indices.query.bool.max_clause_count=2048
       - discovery.type=single-node
-      - 'ES_JAVA_OPTS=-Xms2g -Xmx2g'
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
       - cluster.routing.allocation.disk.threshold_enabled=false
-  
-  mongo:
-    image: "mongo:5.0.27"
+
+  #
+  # MongoDB
+  #
+  db:
+    image: "mongo:7.0"
     container_name: uwazi-mongo
-    command: mongod --replSet "uwazi_replica_set"
+    # command: mongod --replSet "uwazi_replica_set"
     volumes:
       - mongodata:/data/db
     ports:
-      - '27017:27017'
+      - "27017:27017"
 
   mongoreplicaset_start_script:
-    image: "mongo:5.0.27"
+    image: "mongo:7.0"
     restart: "no"
     container_name: mongoreplicaset_start_script
-    depends_on: 
-      - mongo
-    entrypoint: [ "bash", "-c", "sleep 1 && mongo --host mongo:27017 --eval 'rs.initiate();cfg = rs.config(); cfg.members[0].host = \"localhost:27017\";rs.reconfig(cfg, {force:true})'"]   
+    depends_on:
+      - db
+    entrypoint:
+      [
+        "bash",
+        "-c",
+        'sleep 1 && mongo --host db:27017 --eval ''rs.initiate();cfg = rs.config(); cfg.members[0].host = "localhost:27017";rs.reconfig(cfg, {force:true})''',
+      ]
 
+  #
+  # Redis
+  #
   redis:
-    image: 'redis:5.0.14'
+    image: "redis:5.0.14"
     container_name: uwazi-redis
     command: redis-server
     ports:
-      - '6379:6379'
+      - "6379:6379"
     environment:
       - REDIS_REPLICATION_MODE=master
 
+  #
+  # Minio
+  #
   minio:
     image: minio/minio
     container_name: uwazi-s3
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - ./storage/minio:/data
     command: server /data --console-address :9001
 
+  #
+  # Traefik
+  #
+  traefik:
+    image: traefik
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./traefik.yml:/etc/traefik/traefik.yml"
+  #
+  # Dejavu
+  #
   dejavu:
-    image: appbaseio/dejavu:latest   
+    image: appbaseio/dejavu:latest
     restart: on-failure
     ports:
       - "1358:1358"

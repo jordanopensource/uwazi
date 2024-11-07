@@ -78,8 +78,8 @@ RUN echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] http://re
 
 WORKDIR /uwazi/
 COPY --from=build --chown=${USER} /workspace/prod/ .
-COPY docker-entrypoint.sh docker-entrypoint.sh
-RUN chown -R $USER:$USER /uwazi && chmod u+x docker-entrypoint.sh
-USER ${USER}
-EXPOSE 3000
-ENTRYPOINT ["/uwazi/docker-entrypoint.sh"]
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod u+x /docker-entrypoint.sh
+RUN echo $DBHOST
+# USER ${USER}
+ENTRYPOINT ["/docker-entrypoint.sh"]
