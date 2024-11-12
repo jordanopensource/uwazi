@@ -7,7 +7,7 @@ DB_INITIALIZATION_PATH_DEMO="/uwazi/uwazi-fixtures/dump/uwazi_development"
 
 # Display environment settings
 echo "Uwazi Version: ($UWAZI_GIT_RELEASE_REF) ($NODE_ENV)"
-echo "Database Host: $DATABASE_HOST"
+echo "Database Host: $DBHOST"
 echo "Database Name: $DATABASE_NAME"
 echo "Elasticsearch Host: $ELASTICSEARCH_URL"
 echo "Elasticsearch Index: $INDEX_NAME"
@@ -21,7 +21,7 @@ mkdir -p ./uploaded_documents
 # Initialize database if IS_FIRST_RUN is set
 if [ "$IS_FIRST_RUN" = "true" ]; then
     echo "Initializing MongoDB database from blank state..."
-    NODE_ENV=production DBHOST=$DATABASE_HOST ELASTICSEARCH_URL=${ELASTICSEARCH_URL} INDEX_NAME=${INDEX_NAME} FILES_ROOT_PATH=${FILES_ROOT_PATH} yarn blank-state $DATABASE_NAME
+    NODE_ENV=production yarn blank-state $DATABASE_NAME
     echo "Initial database setup complete."
     exit 0
 
@@ -33,10 +33,10 @@ elif [ "$IS_FIRST_DEMO_RUN" = "true" ]; then
     cp -r ./uwazi-fixtures/uploaded_documents/* ./uploaded_documents/
 
     echo "Dropping existing database: ${DATABASE_NAME}"
-    mongosh -host "${DATABASE_HOST:-mongo}" "${DATABASE_NAME:-uwazi_development}" --eval "db.dropDatabase()"
+    mongosh -host "${DBHOST:-mongo}" "${DATABASE_NAME:-uwazi_development}" --eval "db.dropDatabase()"
 
     echo "Importing demo data..."
-    mongorestore -h "${DATABASE_HOST:-mongo}" "$DB_INITIALIZATION_PATH_DEMO" --db="${DATABASE_NAME:-uwazi_development}"
+    mongorestore -h "${DBHOST:-mongo}" "$DB_INITIALIZATION_PATH_DEMO" --db="${DATABASE_NAME:-uwazi_development}"
 
     echo "Running migrations and reindexing..."
     yarn migrate
@@ -47,7 +47,7 @@ elif [ "$IS_FIRST_DEMO_RUN" = "true" ]; then
 
 elif [ "$MIGRATE_AND_REINDEX" = "true" ]; then
     echo "Applying migrations and reindexing..."
-    DBHOST=$DATABASE_HOST NODE_ENV=production DATABASE_NAME=$DATABASE_NAME INDEX_NAME=$INDEX_NAME yarn migrate-and-reindex
+    NODE_ENV=production DATABASE_NAME=$DATABASE_NAME INDEX_NAME=$INDEX_NAME FILES_ROOT_PATH=$FILES_ROOT_PATH yarn migrate-and-reindex
     echo "Migrations and reindexing complete."
     exit 0
 
@@ -55,11 +55,11 @@ else
     echo "No initialization flags set. Assuming MongoDB and Elasticsearch are already initialized."
 fi
 
-# Set ownership and permissions if necessary
-if [ "$USER" != "root" ]; then
-    chown -R $USER:$USER /uwazi
+# Ensure correct permissions
+if [ "$(id -u)" -ne 0 ]; then
+    chown -R "$(id -u):$(id -g)" /uwazi
 fi
 
 # Start the Uwazi server in production mode
 echo "Starting Uwazi server..."
-DBHOST=$DATABASE_HOST DATABASE_NAME=${DATABASE_NAME} HOST=$HOST ELASTICSEARCH_URL=${ELASTICSEARCH_URL} INDEX_NAME=${INDEX_NAME} FILES_ROOT_PATH=${FILES_ROOT_PATH} yarn run-production
+DATABASE_NAME=${DATABASE_NAME} INDEX_NAME=$INDEX_NAME NODE_ENV=production FILES_ROOT_PATH=$FILES_ROOT_PATH yarn run-production
