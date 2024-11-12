@@ -1,3 +1,4 @@
+version: '3'
 services:
   elasticsearch:
     build:
@@ -14,6 +15,13 @@ services:
       - discovery.type=single-node
       - 'ES_JAVA_OPTS=-Xms2g -Xmx2g'
       - cluster.routing.allocation.disk.threshold_enabled=false
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:9200 || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - uwazi_network
 
   mongo:
     image: 'mongo:5'
@@ -23,6 +31,13 @@ services:
       - mongodata:/data/db
     ports:
       - '27017:27017'
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - uwazi_network
 
   # mongoreplicaset_start_script:
   #   image: "mongo:5"
@@ -40,6 +55,13 @@ services:
       - '6379:6379'
     environment:
       - REDIS_REPLICATION_MODE=master
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - uwazi_network
 
   minio:
     image: minio/minio
@@ -50,6 +72,13 @@ services:
     volumes:
       - ./storage/minio:/data
     command: server /data --console-address :9001
+    healthcheck:
+      test: ['CMD', 'curl -f http://localhost:9000/minio/health/live||exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - uwazi_network
 
   uwazi:
     build:
@@ -63,19 +92,29 @@ services:
       - redis
       - minio
     environment:
-      - DATABASE_HOST=mongo
+      - DBHOST=mongo
       - DATABASE_NAME=uwazi_development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - IS_FIRST_RUN=true
+      - IS_FIRST_RUN=false
       - IS_FIRST_DEMO_RUN=false
       - MIGRATE_AND_REINDEX=false
       - INDEX_NAME=uwazi_development
       - FILES_ROOT_PATH=/uwazi/
     ports:
       - '3000:3000'
+    healthcheck:
+      test: ['CMD', 'curl -f http://localhost:3000||exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - uwazi_network
 
 volumes:
   esdata01:
     driver: local
   mongodata:
     driver: local
+
+networks:
+  uwazi_network:
