@@ -1,4 +1,3 @@
-version: '3'
 services:
   elasticsearch:
     build:
@@ -17,21 +16,21 @@ services:
       - cluster.routing.allocation.disk.threshold_enabled=false
 
   mongo:
-    image: "mongo:5.0.27"
+    image: 'mongo:5'
     container_name: uwazi-mongo
-    command: mongod --replSet "uwazi_replica_set"
+    # command: mongod --replSet "uwazi_replica_set"
     volumes:
       - mongodata:/data/db
     ports:
       - '27017:27017'
 
-  mongoreplicaset_start_script:
-    image: "mongo:5.0.27"
-    restart: "no"
-    container_name: mongoreplicaset_start_script
-    depends_on: 
-      - mongo
-    entrypoint: [ "bash", "-c", "sleep 1 && mongo --host mongo:27017 --eval 'rs.initiate();cfg = rs.config(); cfg.members[0].host = \"localhost:27017\";rs.reconfig(cfg, {force:true})'"]   
+  # mongoreplicaset_start_script:
+  #   image: "mongo:5"
+  #   restart: "no"
+  #   container_name: mongoreplicaset_start_script
+  #   depends_on:
+  #     - mongo
+  #   entrypoint: [ "bash", "-c", "sleep 1 && mongo --host mongo:27017 --eval 'rs.initiate();cfg = rs.config(); cfg.members[0].host = \"localhost:27017\";rs.reconfig(cfg, {force:true})'"]
 
   redis:
     image: 'redis:5.0.14'
@@ -51,6 +50,29 @@ services:
     volumes:
       - ./storage/minio:/data
     command: server /data --console-address :9001
+
+  uwazi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uwazi-app
+    depends_on:
+      - mongo
+      # - mongoreplicaset_start_script
+      - elasticsearch
+      - redis
+      - minio
+    environment:
+      - DATABASE_HOST=mongo
+      - DATABASE_NAME=uwazi_development
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - IS_FIRST_RUN=true
+      - IS_FIRST_DEMO_RUN=false
+      - MIGRATE_AND_REINDEX=false
+      - INDEX_NAME=uwazi_development
+      - FILES_ROOT_PATH=/uwazi/
+    ports:
+      - '3000:3000'
 
 volumes:
   esdata01:
