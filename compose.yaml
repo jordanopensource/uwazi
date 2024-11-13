@@ -26,7 +26,7 @@ services:
   mongo:
     image: 'mongo:5'
     container_name: uwazi-mongo
-    # command: mongod --replSet "uwazi_replica_set"
+    command: mongod --replSet "uwazi_replica_set"
     volumes:
       - mongodata:/data/db
     ports:
@@ -39,13 +39,15 @@ services:
     networks:
       - uwazi_network
 
-  # mongoreplicaset_start_script:
-  #   image: "mongo:5"
-  #   restart: "no"
-  #   container_name: mongoreplicaset_start_script
-  #   depends_on:
-  #     - mongo
-  #   entrypoint: [ "bash", "-c", "sleep 1 && mongo --host mongo:27017 --eval 'rs.initiate();cfg = rs.config(); cfg.members[0].host = \"localhost:27017\";rs.reconfig(cfg, {force:true})'"]
+  mongoreplicaset_start_script:
+    image: "mongo:5"
+    restart: "no"
+    container_name: mongoreplicaset_start_script
+    depends_on:
+      - mongo
+    entrypoint: [ "bash", "-c", "sleep 10 && mongo --host mongo:27017 --eval 'rs.initiate();cfg = rs.config(); cfg.members[0].host = \"mongo:27017\";rs.reconfig(cfg, {force:true})'"]
+    networks:
+      - uwazi_network
 
   redis:
     image: 'redis:5.0.14'
@@ -87,7 +89,7 @@ services:
     container_name: uwazi-app
     depends_on:
       - mongo
-      # - mongoreplicaset_start_script
+      - mongoreplicaset_start_script
       - elasticsearch
       - redis
       - minio
@@ -95,7 +97,7 @@ services:
       - DATABASE_HOST=mongo
       - DATABASE_NAME=uwazi_development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - IS_FIRST_RUN=false
+      - IS_FIRST_RUN=true
       - IS_FIRST_DEMO_RUN=false
       - MIGRATE_AND_REINDEX=false
       - INDEX_NAME=uwazi_development
