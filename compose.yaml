@@ -92,7 +92,7 @@ services:
       - redis
       - minio
     environment:
-      - DBHOST=mongo
+      - DATABASE_HOST=mongo
       - DATABASE_NAME=uwazi_development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - IS_FIRST_RUN=false

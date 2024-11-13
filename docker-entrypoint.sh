@@ -7,13 +7,38 @@ DB_INITIALIZATION_PATH_DEMO="/uwazi/uwazi-fixtures/dump/uwazi_development"
 
 # Display environment settings
 echo "Uwazi Version: ($UWAZI_GIT_RELEASE_REF) ($NODE_ENV)"
-echo "Database Host: $DBHOST"
+echo "Database Host: $DATABASE_HOST"
 echo "Database Name: $DATABASE_NAME"
 echo "Elasticsearch Host: $ELASTICSEARCH_URL"
 echo "Elasticsearch Index: $INDEX_NAME"
 echo "First Run: $IS_FIRST_RUN"
 echo "Demo Run: $IS_FIRST_DEMO_RUN"
 echo "Migrate and Reindex: $MIGRATE_AND_REINDEX"
+export DBHOST=$DATABASE_HOST
+
+# Function to wait for MongoDB to be ready
+wait_for_mongo() {
+  echo "Waiting for MongoDB to be ready..."
+  until mongosh --host "${DBHOST:-mongo}" --eval "db.adminCommand('ping')" &>/dev/null; do
+    echo "MongoDB is not ready yet. Retrying in 5 seconds..."
+    sleep 5
+  done
+  echo "MongoDB is ready."
+}
+
+# Function to wait for Elasticsearch to be ready
+wait_for_elasticsearch() {
+  echo "Waiting for Elasticsearch to be ready..."
+  until curl -s "${ELASTICSEARCH_URL:-http://elasticsearch:9200}" &>/dev/null; do
+    echo "Elasticsearch is not ready yet. Retrying in 5 seconds..."
+    sleep 5
+  done
+  echo "Elasticsearch is ready."
+}
+
+# Wait for MongoDB and Elasticsearch to be ready
+wait_for_mongo
+wait_for_elasticsearch
 
 # Ensure required directories exist
 mkdir -p ./uploaded_documents
