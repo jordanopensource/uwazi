@@ -48,7 +48,7 @@ COPY --from=build --chown=uwazi-user /workspace/prod/ .
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod u+x docker-entrypoint.sh
+RUN chown -R uwazi-user:uwazi-user /uwazi && chmod u+x docker-entrypoint.sh
 
 # Switch to non-root user
 USER uwazi-user
