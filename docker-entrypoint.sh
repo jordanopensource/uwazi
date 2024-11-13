@@ -19,8 +19,14 @@ export DBHOST=$DATABASE_HOST
 # Function to check if MongoDB is ready and accessible
 wait_for_mongo() {
   echo "Waiting for MongoDB to be ready..."
+  local retries=10
   until mongosh --host "${DBHOST:-mongo}" --eval "db.adminCommand('ping')" &>/dev/null; do
-    echo "MongoDB is not ready yet. Retrying in 5 seconds..."
+    if [ $retries -le 0 ]; then
+      echo "MongoDB is not ready after multiple attempts. Exiting."
+      exit 1
+    fi
+    echo "MongoDB is not ready yet. Retrying in 5 seconds... ($retries retries left)"
+    retries=$((retries - 1))
     sleep 5
   done
   echo "MongoDB is ready."
@@ -29,8 +35,14 @@ wait_for_mongo() {
 # Function to check if Elasticsearch is ready and accessible
 wait_for_elasticsearch() {
   echo "Waiting for Elasticsearch to be ready..."
+  local retries=10
   until curl -s "${ELASTICSEARCH_URL:-http://elasticsearch:9200}" &>/dev/null; do
-    echo "Elasticsearch is not ready yet. Retrying in 5 seconds..."
+    if [ $retries -le 0 ]; then
+      echo "Elasticsearch is not ready after multiple attempts. Exiting."
+      exit 1
+    fi
+    echo "Elasticsearch is not ready yet. Retrying in 5 seconds... ($retries retries left)"
+    retries=$((retries - 1))
     sleep 5
   done
   echo "Elasticsearch is ready."
