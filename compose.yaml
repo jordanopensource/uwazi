@@ -24,7 +24,7 @@ services:
       - uwazi_network
 
   mongo:
-    image: 'mongo:5'
+    image: 'mongo:8'
     container_name: uwazi-mongo
     command: mongod --replSet "uwazi_replica_set"
     volumes:
@@ -40,12 +40,12 @@ services:
       - uwazi_network
 
   mongoreplicaset_start_script:
-    image: "mongo:5"
+    image: "mongo:8"
     restart: "no"
     container_name: mongoreplicaset_start_script
     depends_on:
       - mongo
-    entrypoint: [ "bash", "-c", "sleep 10 && mongo --host mongo:27017 --eval 'rs.initiate();cfg = rs.config(); cfg.members[0].host = \"mongo:27017\";rs.reconfig(cfg, {force:true})'"]
+    entrypoint: [ "bash", "-c", "sleep 10 && mongosh --host mongo:27017 --eval 'rs.initiate();cfg = rs.config(); cfg.members[0].host = \"mongo:27017\";rs.reconfig(cfg, {force:true})'"]
     networks:
       - uwazi_network
 
@@ -97,9 +97,7 @@ services:
       - DATABASE_HOST=mongo
       - DATABASE_NAME=uwazi_development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - IS_FIRST_RUN=true
       - IS_FIRST_DEMO_RUN=false
-      - MIGRATE_AND_REINDEX=false
       - INDEX_NAME=uwazi_development
       - FILES_ROOT_PATH=/uwazi/
     ports:

@@ -27,16 +27,15 @@ FROM node:20-slim
 ENV NODE_ENV=production
 ENV MONGO_TOOLS_VERSION=100.10.0
 
-# Install curl, gnupg, MongoDB Database Tools, and MongoDB Shell for MongoDB 5
+# Install required packages, MongoDB tools, and MongoDB Shell for MongoDB 8.0
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
-    && curl -O https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian11-x86_64-${MONGO_TOOLS_VERSION}.deb \
-    && apt install -y ./mongodb-database-tools-debian11-x86_64-${MONGO_TOOLS_VERSION}.deb \
-    && rm -f mongodb-database-tools-debian11-x86_64-${MONGO_TOOLS_VERSION}.deb \
-    && curl -fsSL https://www.mongodb.org/static/pgp/server-5.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg \
-    && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg] https://repo.mongodb.org/apt/debian bullseye/mongodb-org/5.0 main" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list \
-    && apt-get update && apt-get install -y mongodb-mongosh \
+    && curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+    && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list \
+    && apt-get update && apt-get install -y \
+       mongodb-mongosh \
+       mongodb-database-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user and set permissions for Uwazi
