@@ -11,9 +11,7 @@ echo "Database Host: $DATABASE_HOST"
 echo "Database Name: $DATABASE_NAME"
 echo "Elasticsearch Host: $ELASTICSEARCH_URL"
 echo "Elasticsearch Index: $INDEX_NAME"
-echo "First Run: $IS_FIRST_RUN"
 echo "Demo Run: $IS_FIRST_DEMO_RUN"
-echo "Migrate and Reindex: $MIGRATE_AND_REINDEX"
 export DBHOST=$DATABASE_HOST
 
 # Function to check if MongoDB is ready and accessible
@@ -48,6 +46,11 @@ wait_for_elasticsearch() {
   echo "Elasticsearch is ready."
 }
 
+# Check if the database exists
+db_exists() {
+  mongosh --host "$DBHOST" --eval "db.getMongo().getDB('$DATABASE_NAME').getCollectionNames().length > 0" | grep -q "true"
+}
+
 # Wait for both MongoDB and Elasticsearch to be ready before proceeding
 wait_for_mongo
 wait_for_elasticsearch
@@ -55,50 +58,27 @@ wait_for_elasticsearch
 # Ensure the 'uploaded_documents' directory exists for storing document uploads
 mkdir -p ./uploaded_documents
 
-# Conditional initialization of the database based on flags
-if [ "$IS_FIRST_RUN" = "true" ]; then
-    # Initialize the database with a blank state if it's the first run
-    echo "Initializing MongoDB database from blank state..."
-    NODE_ENV=production yarn blank-state $DATABASE_NAME
-    echo "Initial database setup complete."
-    exit 0  # Exit once the initial setup is complete
-
-elif [ "$IS_FIRST_DEMO_RUN" = "true" ]; then
-    # Set up the database with demo data if it's the first demo run
-    echo "Setting up MongoDB with demo data..."
-
-    # Restore the PDF documents to the 'uploaded_documents' directory
-    echo "Restoring PDF documents..."
-    rm -rf ./uploaded_documents/*  # Clean the existing documents folder
-    cp -r ./uwazi-fixtures/uploaded_documents/* ./uploaded_documents/  # Copy demo documents
-
-    # Drop the existing database and replace it with demo data
-    echo "Dropping existing database: ${DATABASE_NAME}"
-    mongosh --host "${DBHOST:-mongo}" "${DATABASE_NAME:-uwazi_development}" --eval "db.dropDatabase()"
-
-    # Restore the demo database
-    echo "Importing demo data..."
-    mongorestore -h "${DBHOST:-mongo}" "$DB_INITIALIZATION_PATH_DEMO" --db="${DATABASE_NAME:-uwazi_development}"
-
-    # Run necessary migrations and reindex the data for the demo
-    echo "Running migrations and reindexing..."
-    yarn migrate
-    yarn reindex
-
-    echo "Demo data setup complete."
-    exit 0  # Exit once the demo setup is complete
-
-elif [ "$MIGRATE_AND_REINDEX" = "true" ]; then
-    # Apply migrations and reindex if the respective flag is set
-    echo "Applying migrations and reindexing..."
-    NODE_ENV=production DATABASE_NAME=$DATABASE_NAME INDEX_NAME=$INDEX_NAME FILES_ROOT_PATH=$FILES_ROOT_PATH yarn migrate-and-reindex
-    echo "Migrations and reindexing complete."
-    exit 0  # Exit once migrations and reindexing are complete
-
+# Conditional initialization
+if db_exists; then
+  echo "Database '$DATABASE_NAME' exists. Skipping initial setup."
 else
-    # No initialization flags set, assuming services are already set up
-    echo "No initialization flags set. Assuming MongoDB and Elasticsearch are already initialized."
+  echo "Database '$DATABASE_NAME' does not exist. Running initial setup..."
+  if [ "$IS_FIRST_DEMO_RUN" = "true" ]; then
+    echo "Setting up demo database..."
+    rm -rf ./uploaded_documents/*  # Clean uploaded_documents directory
+    cp -r ./uwazi-fixtures/uploaded_documents/* ./uploaded_documents/
+    mongorestore -h "$DBHOST" "$DB_INITIALIZATION_PATH_DEMO" --db="$DATABASE_NAME"
+  else
+    echo "Initializing blank database state..."
+    NODE_ENV=production yarn blank-state "$DATABASE_NAME"
+  fi
+  echo "Initial database setup complete."
 fi
+
+# Run migrations and reindex
+echo "Running migrations and reindexing..."
+NODE_ENV=production DATABASE_NAME="$DATABASE_NAME" INDEX_NAME="$INDEX_NAME" FILES_ROOT_PATH="$FILES_ROOT_PATH" yarn migrate-and-reindex
+echo "Migrations and reindexing complete."
 
 # Ensure that the correct permissions are set for the Uwazi directory
 if [ "$(id -u)" -ne 0 ]; then
