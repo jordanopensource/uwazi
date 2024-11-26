@@ -1,12 +1,6 @@
 # Stage 1: Build Stage
 FROM node:20-slim AS build
 
-# Install necessary OS packages
-RUN apt-get update && apt-get install -y \
-    libjpeg-dev \
-    poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
-
 # Set working directory and install dependencies
 WORKDIR /workspace
 
@@ -27,10 +21,11 @@ FROM node:20-slim
 ENV NODE_ENV=production
 ENV MONGO_TOOLS_VERSION=100.10.0
 
-# Install required packages, MongoDB tools, and MongoDB Shell for MongoDB 8.0
+# Install required packages, MongoDB tools, MongoDB Shell, and pdftotext (Poppler)
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
+    poppler-utils \
     && curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg \
     && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list \
     && apt-get update && apt-get install -y \
