@@ -1,7 +1,8 @@
-version: '3'
 services:
   elasticsearch:
-    image: elasticsearch:8.16.1
+    build:
+      context: .
+      dockerfile: elastic-icu-8.16.1.Dockerfile
     container_name: uwazi-elasticsearch
     volumes:
       - esdata01:/usr/share/elasticsearch/data
@@ -15,6 +16,7 @@ services:
       - cluster.routing.allocation.disk.threshold_enabled=false
       - xpack.security.transport.ssl.enabled=false
       - xpack.security.enabled=false
+      - xpack.ml.enabled=false
     healthcheck:
       test:
         [
@@ -108,6 +110,7 @@ services:
       - IS_FIRST_DEMO_RUN=false
       - INDEX_NAME=uwazi_development
       - FILES_ROOT_PATH=/uwazi/
+      - USE_ELASTIC_ICU=true
     ports:
       - '3000:3000'
     healthcheck:
