@@ -107,9 +107,7 @@ services:
       - DATABASE_HOST=mongo
       - DATABASE_NAME=uwazi_development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - IS_FIRST_DEMO_RUN=false
       - INDEX_NAME=uwazi_development
-      - FILES_ROOT_PATH=/uwazi/
       - USE_ELASTIC_ICU=true
     ports:
       - '3000:3000'

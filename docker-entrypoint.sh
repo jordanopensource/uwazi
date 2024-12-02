@@ -13,6 +13,7 @@ echo "Elasticsearch Host: $ELASTICSEARCH_URL"
 echo "Elasticsearch Index: $INDEX_NAME"
 echo "Demo Run: $IS_FIRST_DEMO_RUN"
 export DBHOST=$DATABASE_HOST
+export FILES_ROOT_PATH=/uwazi/
 
 # Function to check if MongoDB is ready and accessible
 wait_for_mongo() {
@@ -46,14 +47,31 @@ wait_for_elasticsearch() {
   echo "Elasticsearch is ready."
 }
 
+# Function to check if Redis is ready and accessible
+wait_for_redis() {
+  echo "Waiting for Redis to be ready..."
+  local retries=10
+  until redis-cli -h "${REDIS_HOST:-redis}" ping &>/dev/null; do
+    if [ $retries -le 0 ]; then
+      echo "Redis is not ready after multiple attempts. Exiting."
+      exit 1
+    fi
+    echo "Redis is not ready yet. Retrying in 5 seconds... ($retries retries left)"
+    retries=$((retries - 1))
+    sleep 5
+  done
+  echo "Redis is ready."
+}
+
 # Check if the database exists
 db_exists() {
   mongosh --host "$DBHOST" --eval "db.getMongo().getDB('$DATABASE_NAME').getCollectionNames().length > 0" | grep -q "true"
 }
 
-# Wait for both MongoDB and Elasticsearch to be ready before proceeding
+# Wait for services to be ready before proceeding
 wait_for_mongo
 wait_for_elasticsearch
+wait_for_redis
 
 # Ensure the 'uploaded_documents' directory exists for storing document uploads
 mkdir -p ./uploaded_documents
@@ -79,12 +97,6 @@ fi
 echo "Running migrations and reindexing..."
 NODE_ENV=production DATABASE_NAME="$DATABASE_NAME" INDEX_NAME="$INDEX_NAME" FILES_ROOT_PATH="$FILES_ROOT_PATH" yarn migrate-and-reindex
 echo "Migrations and reindexing complete."
-
-# Ensure that the correct permissions are set for the Uwazi directory
-if [ "$(id -u)" -ne 0 ]; then
-    echo "Adjusting directory permissions..."
-    chown -R uwazi-user:uwazi-user /uwazi
-fi
 
 # Start the Uwazi server in production mode
 echo "Starting Uwazi server..."
