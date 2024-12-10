@@ -5,21 +5,26 @@ set -e
 DB_INITIALIZATION_PATH="${DB_INITIALIZATION_PATH:-"/uwazi/database/blank_state/uwazi_development"}"
 DB_INITIALIZATION_PATH_DEMO="/uwazi/uwazi-fixtures/dump/uwazi_development"
 
+# Ensure MONGO_URI is provided
+if [ -z "$MONGO_URI" ]; then
+  echo "Error: MONGO_URI is not set. Please provide the MongoDB connection URI."
+  exit 1
+fi
+
 # Display key environment settings for debugging purposes
 echo "Uwazi Version: ($UWAZI_GIT_RELEASE_REF) ($NODE_ENV)"
-echo "Database Host: $DATABASE_HOST"
+echo "MongoDB URI: $MONGO_URI"
 echo "Database Name: $DATABASE_NAME"
 echo "Elasticsearch Host: $ELASTICSEARCH_URL"
 echo "Elasticsearch Index: $INDEX_NAME"
 echo "Demo Run: $IS_FIRST_DEMO_RUN"
-export DBHOST=$DATABASE_HOST
 export FILES_ROOT_PATH=/uwazi/
 
 # Function to check if MongoDB is ready and accessible
 wait_for_mongo() {
   echo "Waiting for MongoDB to be ready..."
   local retries=10
-  until mongosh --host "${DBHOST:-mongo}" --eval "db.adminCommand('ping')" &>/dev/null; do
+  until mongosh "$MONGO_URI" --eval "db.adminCommand('ping')" &>/dev/null; do
     if [ $retries -le 0 ]; then
       echo "MongoDB is not ready after multiple attempts. Exiting."
       exit 1
@@ -49,7 +54,7 @@ wait_for_elasticsearch() {
 
 # Check if the database exists
 db_exists() {
-  mongosh --host "$DBHOST" --eval "db.getMongo().getDB('$DATABASE_NAME').getCollectionNames().length > 0" | grep -q "true"
+  mongosh "$MONGO_URI" --eval "db.getMongo().getDB('$DATABASE_NAME').getCollectionNames().length > 0" | grep -q "true"
 }
 
 # Wait for services to be ready before proceeding
@@ -68,7 +73,7 @@ else
     echo "Setting up demo database..."
     rm -rf ./uploaded_documents/*  # Clean uploaded_documents directory
     cp -r ./uwazi-fixtures/uploaded_documents/* ./uploaded_documents/
-    mongorestore -h "$DBHOST" "$DB_INITIALIZATION_PATH_DEMO" --db="$DATABASE_NAME"
+    mongorestore --uri "$MONGO_URI" "$DB_INITIALIZATION_PATH_DEMO" --db="$DATABASE_NAME"
   else
     echo "Initializing blank database state..."
     NODE_ENV=production yarn blank-state "$DATABASE_NAME"
