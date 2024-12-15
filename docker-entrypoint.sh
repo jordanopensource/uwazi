@@ -52,9 +52,39 @@ wait_for_elasticsearch() {
   echo "Elasticsearch is ready."
 }
 
-# Check if the database exists
+# Check if the default collections exist in the database
 db_exists() {
-  mongosh "$MONGO_URI" --eval "db.getMongo().getDB('$DATABASE_NAME').getCollectionNames().length > 0" | grep -q "true"
+  local collections=(
+    'connections'
+    'translationsV2'
+    'activitylogs'
+    'settings'
+    'users'
+    'templates'
+    'relationtypes'
+    'updatelogs'
+    'migrations'
+    'migrationHubRecords'
+    'files'
+    'relationshipMigrationFields'
+    'entities'
+    'sessions'
+    'relationships'
+    'dictionaries'
+  )
+
+  # Get the list of existing collections in the database
+  local existing_collections
+  existing_collections=$(mongosh "$MONGO_URI" --eval "db.getMongo().getDB('$DATABASE_NAME').getCollectionNames()" --quiet)
+
+  # Check if all required collections are present
+  for collection in "${collections[@]}"; do
+    if [[ "$existing_collections" != *"$collection"* ]]; then
+      return 1  # Missing a collection
+    fi
+  done
+
+  return 0  # All collections exist
 }
 
 # Wait for services to be ready before proceeding
@@ -66,9 +96,9 @@ mkdir -p ./uploaded_documents
 
 # Conditional initialization
 if db_exists; then
-  echo "Database '$DATABASE_NAME' exists. Skipping initial setup."
+  echo "Database '$DATABASE_NAME' is fully initialized with default collections. Skipping setup."
 else
-  echo "Database '$DATABASE_NAME' does not exist. Running initial setup..."
+  echo "Database '$DATABASE_NAME' is not fully initialized. Proceeding with setup..."
   if [ "$IS_FIRST_DEMO_RUN" = "true" ]; then
     echo "Setting up demo database..."
     rm -rf ./uploaded_documents/*  # Clean uploaded_documents directory
