@@ -104,8 +104,9 @@ services:
       - redis
       - minio
     environment:
-      - MONGO_URI=mongodb://mongo
+      - MONGO_URI=mongodb://mongo/uwazi_development
       - DATABASE_NAME=uwazi_development
+      - REDIS_HOST=redis
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - INDEX_NAME=uwazi_development
       - USE_ELASTIC_ICU=true

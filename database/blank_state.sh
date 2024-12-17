@@ -1,42 +1,33 @@
 #!/bin/bash
 set -e
 
+# Function to log messages with timestamps
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# Navigate to the script's directory
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" || exit ; pwd -P )
 cd "$parent_path" || exit
 
-FORCE_FLAG=false
-
-filtered=()
-args=("$@")
-for item in "${args[@]}"; do
-    if [ "$item" == '--force' ]; then
-        FORCE_FLAG=true
-    else
-        filtered+=("$item")
-    fi
-done
-
-DB=${filtered[0]:-${DATABASE_NAME:-uwazi_development}}
-HOST=${filtered[1]:-${DBHOST:-127.0.0.1}}
-
+# Function to recreate the database
 recreate_database() {
-    mongosh --quiet -host "$HOST" "$DB" --eval "db.dropDatabase()"
-    mongorestore -h "$HOST" blank_state/uwazi_development/ --db="$DB"
+    log "Dropping database '$DATABASE_NAME'..."
+    mongosh "$MONGO_URI" --eval "db.dropDatabase()" || { log "Failed to drop database '$DATABASE_NAME'"; exit 1; }
 
-    INDEX_NAME=$DB DATABASE_NAME=$DB yarn migrate
-    INDEX_NAME=$DB DATABASE_NAME=$DB yarn reindex
+    log "Restoring database from dump..."
+    mongorestore --uri "$MONGO_URI" blank_state/uwazi_development/ || { log "Failed to restore database"; exit 1; }
 
+    log "Running migrations..."
+    INDEX_NAME=$INDEX_NAME DATABASE_NAME=$DATABASE_NAME yarn migrate || { log "Failed to run migrations"; exit 1; }
+
+    log "Reindexing..."
+    INDEX_NAME=$INDEX_NAME DATABASE_NAME=$DATABASE_NAME yarn reindex || { log "Failed to reindex"; exit 1; }
+
+    log "Database recreation complete."
     exit 0
 }
 
-mongo_indexof_db=$(mongosh --quiet -host "$HOST" --eval "db.getMongo().getDBNames().indexOf('$DB')")
-RED='\033[0;31m'
-NC='\033[0m'
-if [ "$mongo_indexof_db" -ne "-1" ]; then    
-    if [ "$FORCE_FLAG" = false ]; then
-        echo -e "\nError!${RED} $DB ${NC}database already exists. It will not be deleted.\nPlease use --force flag if you want to override\n"
-        exit 2    
-    fi
-fi
+# Main execution
+log "Starting database recreation process for '$DATABASE_NAME'..."
 recreate_database
-

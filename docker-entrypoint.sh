@@ -11,13 +11,26 @@ if [ -z "$MONGO_URI" ]; then
   exit 1
 fi
 
+# Check if the DATABASE_NAME environment variable is set
+if [ -z "$DATABASE_NAME" ]; then
+    echo "Error: DATABASE_NAME is not set. Please provide the MongoDB database name."
+    exit 1
+fi
+
+# Extract the host part of the URI
+MONGO_HOST=$(echo "$MONGO_URI" | sed -E 's|^[^/]+//([^@/]+@)?([^/]+).*|\2|')
+
+# Set default index name if not provided
+INDEX_NAME="${INDEX_NAME:-$DATABASE_NAME}"
+
 # Display key environment settings for debugging purposes
 echo "Uwazi Version: ($UWAZI_GIT_RELEASE_REF) ($NODE_ENV)"
-echo "MongoDB URI: $MONGO_URI"
+echo "MongoDB Host: $MONGO_HOST"
 echo "Database Name: $DATABASE_NAME"
+echo "Redis Host: $(echo $REDIS_HOST | sed -E 's/^[^@]+@([^/]+).*/\1/')"
 echo "Elasticsearch Host: $ELASTICSEARCH_URL"
 echo "Elasticsearch Index: $INDEX_NAME"
-echo "Demo Run: $IS_FIRST_DEMO_RUN"
+echo "Demo Run: ${IS_FIRST_DEMO_RUN:-false}"
 export FILES_ROOT_PATH=/uwazi/
 
 # Function to check if MongoDB is ready and accessible
