@@ -67,7 +67,7 @@ export const config = {
     customUploads: CUSTOM_UPLOADS_FOLDER || `${filesRootPath}/custom_uploads/`,
     activityLogs: ACTIVITY_LOGS_FOLDER || `${filesRootPath}/log/`,
     featureFlags: {
-      s3Storage: false,
+      s3Storage: process.env.ENABLE_S3 || false,
     },
   },
   externalServices: Boolean(process.env.EXTERNAL_SERVICES) || false,
